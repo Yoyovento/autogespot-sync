@@ -7,31 +7,37 @@ CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
 def get_latest_spot():
     url = "https://www.autogespot.fr/spots"
-    # On met un déguisement de vrai navigateur très complet
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7'
     }
     
     print(f"1. Tentative de connexion à {url}...")
     res = requests.get(url, headers=headers)
-    print(f"2. Réponse du site Autogespot : Erreur {res.status_code}" if res.status_code != 200 else "2. Connexion au site réussie (200) !")
+    print(f"2. Connexion réussie (200) !" if res.status_code == 200 else f"2. Erreur {res.status_code}")
     
     soup = BeautifulSoup(res.text, 'html.parser')
     images = soup.find_all('img')
-    print(f"3. Nombre total d'images trouvées sur la page : {len(images)}")
+    print(f"3. Nombre total d'images trouvées : {len(images)}")
     
-    # On cherche l'image
     for img in images:
-        if img.has_attr('class') and any('spot' in c for c in img['class']):
-            img_url = img['src'].replace('medium', 'large')
-            if not img_url.startswith('http'):
-                img_url = "https:" + img_url
+        # Les sites modernes cachent parfois le lien dans 'data-src' pour charger plus vite
+        img_url = img.get('data-src') or img.get('src') or ''
+        
+        # On filtre : on veut un JPG, et on exclut les avatars ou les logos du site
+        if '.jpg' in img_url.lower() and 'logo' not in img_url.lower() and 'avatar' not in img_url.lower():
+            # On force la haute résolution pour ton fond d'écran
+            img_url = img_url.replace('small', 'large').replace('medium', 'large')
+            
+            # On répare le lien s'il est incomplet
+            if img_url.startswith('//'):
+                img_url = 'https:' + img_url
+            elif img_url.startswith('/'):
+                img_url = 'https://www.autogespot.fr' + img_url
+                
             print(f"4. ✅ Super ! Image trouvée : {img_url}")
             return img_url
             
-    print("❌ Erreur : Impossible de trouver une voiture. Autogespot a peut-être changé son code ou bloqué l'accès.")
+    print("❌ Erreur : Impossible de trouver une voiture parmi les images.")
     return None
 
 def send_to_telegram(photo_url):
