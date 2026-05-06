@@ -17,6 +17,7 @@ marques_ignorees = [
     "Mini", 
     "Fiat",
     "Ford Focus",
+    "Class G",
     "Abarth"
 ]
 
